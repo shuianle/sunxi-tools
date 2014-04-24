@@ -88,6 +88,8 @@ int script_generate_fex(FILE *out, const char *UNUSED(filename),
 	struct script_section *section;
 	struct script_entry *entry;
 
+	const int *p, *pe;
+
 	for (ls = list_first(&script->sections); ls;
 	     ls = list_next(&script->sections, ls)) {
 		section = container_of(ls, struct script_section, sections);
@@ -133,7 +135,7 @@ int script_generate_fex(FILE *out, const char *UNUSED(filename),
 					fprintf(out, "%s = port:P%c%02u", entry->name,
 						port, gpio->port_num);
 				}
-				for (const int *p = gpio->data, *pe = p+4; p != pe; p++) {
+				for (p = gpio->data, pe = p+4; p != pe; p++) {
 					if (*p == -1)
 						fputs("<default>", out);
 					else
@@ -181,9 +183,11 @@ int script_parse_fex(FILE *in, const char *filename, struct script *script)
 	char buffer[MAX_LINE+1];
 	int ok = 1;
 	struct script_section *last_section = NULL;
+	size_t line;
+	int i;
 
 	/* TODO: deal with longer lines correctly (specially in comments) */
-	for(size_t line = 1; ok && fgets(buffer, sizeof(buffer), in); line++) {
+	for(line = 1; ok && fgets(buffer, sizeof(buffer), in); line++) {
 		char *s = skip_blank(buffer); /* beginning */
 		char *pe = s; /* \0... to be found */
 
@@ -291,7 +295,7 @@ int script_parse_fex(FILE *in, const char *filename, struct script *script)
 						int data[] = {-1,-1,-1,-1};
 						int port_num = v;
 						p = end;
-						for (int i=0; *p && i<4; i++) {
+						for (i=0; *p && i<4; i++) {
 							if (memcmp(p, "<default>", 9) == 0) {
 								p += 9;
 								continue;

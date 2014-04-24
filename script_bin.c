@@ -217,11 +217,12 @@ static int decompile_section(void *bin, size_t UNUSED(bin_size),
 {
 	struct script_bin_entry *entry = PTR(bin,  section->offset<<2);
 	struct script_section *s;
+	int i;
 
 	if ((s = script_section_new(script, section->name)) == NULL)
 		goto malloc_error;
 
-	for (int i = section->length; i--; entry++) {
+	for (i = section->length; i--; entry++) {
 		void *data = PTR(bin, entry->offset<<2);
 		unsigned type, words;
 		type	= (entry->pattern >> 16) & 0xffff;

@@ -37,7 +37,7 @@ struct members {
 	const char *translation;
 	int mode;
 };
-#define foreach_member(I, T) for (const struct members *I = T; \
+#define foreach_member(I, T) for (I = T; \
 	     I < T+ARRAY_SIZE(T); I++)
 
 /*
@@ -57,6 +57,9 @@ static inline void out_u32_member(FILE *out, const char *key, int hexa,
 static inline void out_gpio_member(FILE *out, const char *key,
 				   struct script_gpio_entry *gpio)
 {
+	const int *p;
+	const int *pe;
+
 	fprintf(out, "\t.%s = ", key);
 
 	if (gpio->port == 0xffff)
@@ -64,7 +67,7 @@ static inline void out_gpio_member(FILE *out, const char *key,
 	else
 		fprintf(out, "GPIO_CFG(%u, %u", gpio->port, gpio->port_num);
 
-	for (const int *p = gpio->data, *pe = p+4; p != pe; p++) {
+	for (p = gpio->data, pe = p+4; p != pe; p++) {
 		if (*p == -1)
 			fputs(", 0xff", out);
 		else
@@ -132,6 +135,8 @@ static int generate_dram_struct(FILE *out, struct script_section *sp)
 	struct script_entry *ep;
 	const char *key;
 	int ret = 1;
+
+	const struct members *mp;
 
 	fprintf(out, "static struct dram_para dram_para = {\n");
 	foreach_member(mp, dram_members) {
@@ -215,6 +220,8 @@ static int generate_pmu_struct(FILE *out, struct script_section *target,
 int script_generate_uboot(FILE *out, const char *UNUSED(filename),
 			  struct script *script)
 {
+	unsigned i;
+
 	struct {
 		const char *name;
 		struct script_section *sp;
@@ -226,7 +233,7 @@ int script_generate_uboot(FILE *out, const char *UNUSED(filename),
 #endif
 	};
 
-	for (unsigned i=0; i<ARRAY_SIZE(sections); i++) {
+	for (i=0; i<ARRAY_SIZE(sections); i++) {
 		struct script_section *sp;
 
 		sp = script_find_section(script, sections[i].name);

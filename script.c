@@ -60,6 +60,11 @@ struct script_section *script_section_new(struct script *script,
 	assert(script);
 	assert(name && *name);
 
+	if (section = script_find_section(script, name)) {
+		// exist
+		return section;
+	}
+
 	if ((section = malloc(sizeof(*section)))) {
 		size_t l = strlen(name);
 		if (l>31) /* truncate */
@@ -171,9 +176,15 @@ struct script_null_entry *script_null_entry_new(struct script_section *section,
 						const char *name)
 {
 	struct script_null_entry *entry;
+	struct script_entry *tmp;
 
 	assert(section);
 	assert(name && *name);
+
+	tmp = script_find_entry(section, name);
+	if (tmp) {
+		script_entry_delete(tmp);
+	}
 
 	if ((entry = malloc(sizeof(*entry)))) {
 		script_entry_append(section, &entry->entry,
@@ -188,9 +199,15 @@ struct script_single_entry *script_single_entry_new(struct script_section *secti
 						    uint32_t value)
 {
 	struct script_single_entry *entry;
+	struct script_entry *tmp;
 
 	assert(section);
 	assert(name && *name);
+
+	tmp = script_find_entry(section, name);
+	if (tmp) {
+		script_entry_delete(tmp);
+	}
 
 	if ((entry = malloc(sizeof(*entry)))) {
 		entry->value = value;
@@ -207,10 +224,16 @@ struct script_string_entry *script_string_entry_new(struct script_section *secti
 						       size_t l, const char *s)
 {
 	struct script_string_entry *entry;
+	struct script_entry *tmp;
 
 	assert(section);
 	assert(name);
 	assert(s);
+
+	tmp = script_find_entry(section, name);
+	if (tmp) {
+		script_entry_delete(tmp);
+	}
 
 	if ((entry = malloc(sizeof(*entry)+l+1))) {
 		entry->l = l;
@@ -230,14 +253,20 @@ struct script_gpio_entry *script_gpio_entry_new(struct script_section *section,
 						int32_t data[4])
 {
 	struct script_gpio_entry *entry;
-
+	struct script_entry *tmp;
+	int i;
 	assert(section);
 	assert(name && *name);
+
+	tmp = script_find_entry(section, name);
+	if (tmp) {
+		script_entry_delete(tmp);
+	}
 
 	if ((entry = malloc(sizeof(*entry)))) {
 		entry->port = port;
 		entry->port_num = num;
-		for (int i=0; i<4; i++)
+		for (i=0; i<4; i++)
 			entry->data[i] = data[i];
 
 		script_entry_append(section, &entry->entry,

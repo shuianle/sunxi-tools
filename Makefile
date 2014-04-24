@@ -30,6 +30,11 @@ fexc: fexc.h script.h script.c \
 	script_bin.h script_bin.c \
 	script_fex.h script_fex.c
 
+fexc_m: fexc.h script.h script.c \
+	script_uboot.h script_uboot.c \
+	script_bin.h script_bin.c \
+	script_fex.h script_fex.c
+
 LIBUSB = libusb-1.0
 LIBUSB_CFLAGS = `pkg-config --cflags $(LIBUSB)`
 LIBUSB_LIBS = `pkg-config --libs $(LIBUSB)`

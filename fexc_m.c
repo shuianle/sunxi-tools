@@ -32,7 +32,6 @@
 enum script_format {
 	FEX_SCRIPT_FORMAT,
 	BIN_SCRIPT_FORMAT,
-	UBOOT_HEADER_FORMAT,
 };
 
 /*
@@ -146,8 +145,6 @@ static inline int script_parse(enum script_format format,
 bin_close:
 		close(in);
 		}; break;
-	case UBOOT_HEADER_FORMAT: /* not valid input */
-		;
 	}
 	return ret;
 }
@@ -156,9 +153,8 @@ static inline int script_generate(enum script_format format,
 				  struct script *script)
 {
 	int ret = 0;
-	static int (*text_gen[3]) (FILE *, const char *, struct script *) = {
+	static int (*text_gen[2]) (FILE *, const char *, struct script *) = {
 		[FEX_SCRIPT_FORMAT] = script_generate_fex,
-		[UBOOT_HEADER_FORMAT] = script_generate_uboot,
 	};
 
 	if (text_gen[format]) {
@@ -214,54 +210,38 @@ done:
 
 /*
  */
-static inline void app_usage(const char *arg0, int mode)
+static inline void app_usage(const char *arg0)
 {
 	errf("Usage: %s [-vq]%s[<input> [<output>]]\n", arg0,
-	     mode ? " " : " [-I <infmt>] [-O <outfmt>] ");
+	     " [-I <infmt>] [-O <outfmt>] ");
 
-	if (mode == 0)
-		fputs("\ninfmt:  fex, bin  (default:fex)"
-		      "\noutfmt: fex, bin, uboot  (default:bin)\n",
-		      stderr);
-}
-
-static inline int app_choose_mode(char *arg0)
-{
-	const char *name = basename(arg0);
-	if (strcmp(name, "fex2bin") == 0)
-		return 1;
-	else if (strcmp(name, "bin2fex") == 0)
-		return 2;
-	else
-		return 0;
+	fputs("\ninfmt:  fex, bin  (default:fex)"
+	      "\noutfmt: fex, bin, uboot  (default:bin)\n",
+	      stderr);
 }
 
 /*
  */
 int main(int argc, char *argv[])
 {
-	static const char *formats[] = { "fex", "bin", "uboot", NULL };
-	enum script_format infmt=FEX_SCRIPT_FORMAT;
+	static const char *formats[] = { "fex", "bin", NULL };
+	enum script_format infmt=BIN_SCRIPT_FORMAT;
 	enum script_format outfmt=BIN_SCRIPT_FORMAT;
-	const char *filename[] = { NULL /*stdin*/, NULL /*stdout*/};
+	enum script_format updatefmt=FEX_SCRIPT_FORMAT;
+	const char *filename[] = { NULL /*stdin*/, NULL /*stdin*/, NULL /*stdout*/ };
 	struct script *script;
 
-	int app_mode = app_choose_mode(argv[0]);
-
-	const char *opt_string = "I:O:vq?"+ ((app_mode == 0)? 0: 4);
+	const char *opt_string = "I:O:vq";
 	int opt, ret = 1;
 	int verbose = 0;
 
-	if (app_mode == 2) { /* bin2fex */
-		infmt = BIN_SCRIPT_FORMAT;
-		outfmt = FEX_SCRIPT_FORMAT;
-	}
+	const char **f;
 
 	while ((opt = getopt(argc, argv, opt_string)) != -1) {
 		switch (opt) {
 		case 'I':
 			infmt=0;
-			for (const char **f = formats; *f; f++, infmt++) {
+			for (f = formats; *f; f++, infmt++) {
 				if (strcmp(*f, optarg) == 0)
 					break;
 			}
@@ -277,7 +257,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'O':
 			outfmt=0;
-			for (const char **f = formats; *f; f++, outfmt++) {
+			for (f = formats; *f; f++, outfmt++) {
 				if (strcmp(*f, optarg) == 0)
 					break;
 			}
@@ -295,14 +275,16 @@ int main(int argc, char *argv[])
 			break;
 		default:
 show_usage:
-			app_usage(argv[0], app_mode);
+			app_usage(argv[0]);
 			goto done;
 		}
 	}
 
 	switch (argc - optind) {
+	case 3:
+		filename[2] = argv[optind+2]; /* out */
 	case 2:
-		filename[1] = argv[optind+1]; /* out */
+		filename[1] = argv[optind+1]; /* update */
 	case 1:
 		if (strcmp(argv[optind], "-") != 0)
 			filename[0] = argv[optind]; /* in */
@@ -315,13 +297,14 @@ show_usage:
 	if (verbose>0)
 		errf("%s: from %s:%s to %s:%s\n", argv[0],
 		     formats[infmt], filename[0]?filename[0]:"<stdin>",
-		     formats[outfmt], filename[1]?filename[1]:"<stdout>");
+		     formats[outfmt], filename[2]?filename[2]:"<stdout>");
 
 	if ((script = script_new()) == NULL) {
 		perror("malloc");
 		goto done;
-	} else if (script_parse(infmt, filename[0], script) &&
-		   script_generate(outfmt, filename[1], script)) {
+	} else if (script_parse(infmt, filename[0], script) 
+			&& script_parse(updatefmt, filename[1], script)
+		   	&& script_generate(outfmt, filename[2], script)) {
 		ret = 0;
 	}
 	script_delete(script);
